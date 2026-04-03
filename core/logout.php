@@ -9,6 +9,6 @@ if (session_status() === PHP_SESSION_NONE) {
 $_SESSION = array();
 session_destroy();
 
-header("Location: core/login.php");
+header("Location: login.php");
 exit();
 ?>

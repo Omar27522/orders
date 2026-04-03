@@ -87,3 +87,4 @@ A modern, responsive web application for managing hardware hardware inventory an
 
 > [!TIP]
 > Built with ❤️ for speed and reliability. For developer support, refer to the internal notes in the source code.
+>admin / admin123
