@@ -6,13 +6,16 @@ A modern, responsive web application for managing hardware hardware inventory an
 
 ## ✨ Key Features
 
+-   **B2B Manifest Generation**: Creates final, professional billing summaries with auto-calculated totals and unit prices.
+-   **CSV Portable Exports**: Instant "IQA Metal B2B Purchase Form" export compatible with Excel and LibreOffice.
+-   **Fulfillment Tracking**: A Global Batch Registry to track orders through lifecycle states (Pending, Paid, Dispatched, Finalized).
+-   **Technical CPU Tracking**: Specialized hardware categorization from 2nd Gen through 12th Gen for high-volume entry.
 -   **Two-Phase Workflow**: Clean separation between customer management and order entry.
--   **Dynamic Order Builder**: Add items (Brand, Model, Series, Description) to a live summary with real-time visual updates.
--   **Full Customer CRM**: Track company names, primary contacts, websites, shipping addresses, and internal notes.
--   **Anti-Refresh Pattern (PRG)**: Implements the **Post/Redirect/Get** pattern to eliminate duplicate form submissions and "Confirm Resubmit" browser errors on refresh.
--   **Automated IDs**: Internal customer identifiers (`CUST-XXXXXXXX`) are generated automatically to prevent manual entry errors.
--   **Zero-Config Backend**: Utilizes **SQLite** for a portable, file-based database—no complex MySQL/PostgreSQL server setup required.
--   **Pro Design**: A two-column responsive layout with modern glassmorphism elements, custom scrollbars, and interactive "chip-style" status badges.
+-   **Dynamic Order Builder**: Add items with real-time visual summaries and sidebar tracking.
+-   **Full Customer CRM**: Manage company specifics, addresses, and internal notes.
+-   **Anti-Refresh Pattern (PRG)**: Implements the **Post/Redirect/Get** pattern for zero-error form submissions.
+-   **Zero-Config Backend**: Utilizes **SQLite**—completely portable, no server setup required.
+-   **Pro Design**: Split-column responsive layout with custom external stylesheets and branding icons.
 
 ---
 
@@ -35,15 +38,23 @@ A modern, responsive web application for managing hardware hardware inventory an
 ├── customer_registry.php     # Customer list, search, and selection UI
 ├── new_customer.php          # Detailed customer registration module
 ├── new_order.php             # Core hardware intake & order summary logic
+├── orders.php                # Global batch fulfillment registry
+├── checkout.php              # Finalized B2B manifest & billing summary
 ├── assets/
 │   ├── styles/
-│   │   └── style.css         # Universal design system & component styles
+│   │   ├── style.css         # Universal design system tokens
+│   │   ├── checkout.css      # Manifest & print-ready layout styles
+│   │   ├── orders.css        # Batch registry & card grid styles
+│   │   ├── customer_registry.css# Account list & sidebar styles
+│   │   └── new_order.css     # Batch builder specific styling
 │   ├── ts/
-│   │   └── new_order.ts      # TypeScript logic for dynamic form population
-│   └── db/
-│       ├── customers.db      # SQLite database for customer records
-│       └── orders.db         # SQLite database for hardware orders
-└── README.md                 # This file
+│   │   └── new_order.ts      # Hardware inventory & UI population logic
+│   ├── db/
+│   │   ├── customers.db      # SQLite database for customer records (ignored by git)
+│   │   └── orders.db         # SQLite database for hardware orders (ignored by git)
+│   └── icon/
+│       └── [logo].png        # Professional site icon
+└── README.md                 # Project documentation
 ```
 
 ---
