@@ -60,6 +60,20 @@
 
 .print-only { display: none; }
 
+.manifest-print-footer {
+    margin-top: 50px;
+    padding-top: 30px;
+    border-top: 2px solid #f1f5f9;
+}
+
+.footer-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    font-size: 0.85rem;
+    color: var(--text-main);
+}
+
 @media print {
     body { 
         background: white !important; 
@@ -82,4 +96,9 @@
     .receipt-table th { border-bottom: 2px solid #000 !important; color: #000 !important; }
     .receipt-table td { border-bottom: 1px solid #eee !important; }
     h1 { font-size: 1.6rem; margin-bottom: 20px; text-align: left !important; }
+
+    .manifest-print-footer {
+        border-top: 2px solid #000 !important;
+        margin-top: 80px;
+    }
 }

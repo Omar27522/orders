@@ -1,3 +1,4 @@
+<?php include 'core/auth.php'; ?>
 <!DOCTYPE html>
 <html lang="en">
 
@@ -30,16 +31,24 @@
                 <span class="step-num">2</span> Order Entry
             </a>
             <?php endif; ?>
+
+            <?php if (isset($_GET['view']) && $_GET['view'] === 'settings'): ?>
+            <span class="separator">/</span>
+            <a href="#" class="crumb active">
+                <span class="step-num">⚙️</span> Settings
+            </a>
+            <?php endif; ?>
         </nav>
 
-        <nav class="breadcrumbs">
+        <nav class="breadcrumbs" style="display: flex; gap: 20px; align-items: center;">
             <a href="index.php?view=orders" class="crumb <?= isset($_GET['view']) && $_GET['view'] === 'orders' ? 'active' : '' ?>" style="margin:0;">
                 📦 All Orders
             </a>
+            <a href="index.php?view=settings" class="crumb icon-only <?= isset($_GET['view']) && $_GET['view'] === 'settings' ? 'active' : '' ?>" style="margin:0;">⚙️</a>
         </nav>
     </div>
 
-    <div class="container">
+    <div class="container <?= isset($_GET['customer_id']) || (isset($_GET['view']) && $_GET['view'] === 'orders') ? 'order-view' : '' ?>">
         <?php
         // Order Creation Logic
         if (isset($_GET['action']) && $_GET['action'] === 'create_new_order' && isset($_GET['customer_id'])) {
@@ -59,13 +68,15 @@
         if (isset($_GET['customer_id'])) {
             $current_customer = $_GET['customer_id'];
             $current_order = $_GET['order_id'] ?? null;
-            include 'new_order.php';
+            include 'pages/new_order.php';
         } elseif (isset($_GET['view']) && $_GET['view'] === 'register') {
-            include 'new_customer.php';
+            include 'pages/new_customer.php';
         } elseif (isset($_GET['view']) && $_GET['view'] === 'orders') {
-            include 'orders.php';
+            include 'pages/orders.php';
+        } elseif (isset($_GET['view']) && $_GET['view'] === 'settings') {
+            include 'pages/settings.php';
         } else {
-            include 'customer_registry.php';
+            include 'pages/customer_registry.php';
         }
         ?>
     </div>

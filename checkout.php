@@ -1,3 +1,4 @@
+<?php include 'core/auth.php'; ?>
 <?php
 if (session_status() === PHP_SESSION_NONE) {
     session_start();
@@ -179,6 +180,7 @@ try {
                 </tbody>
             </table>
 
+
             <div style="margin-top: 30px; display: flex; flex-direction: column; gap: 12px; align-items: stretch;" class="no-print">
                 <div style="display: flex; gap: 12px; flex-wrap: wrap;">
                     <button type="submit" name="action" value="update_items" class="btn-main" style="flex: 1.5; min-width: 150px; border: none; cursor: pointer; height: 50px; background: var(--text-main); color: white; border-radius: 12px; font-weight: 800; font-size: 1rem; box-shadow: 0 10px 15px -3px rgba(15, 23, 42, 0.1);">
@@ -273,7 +275,7 @@ try {
             csv += `\n,,,,,,,,\"Total QTY\",\"${totalQty}\"\n`;
             csv += `,,,,,,,,\"Total Amount\",\"$${grandTotal.toFixed(2)}\"\n`;
 
-            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
             const link = document.createElement("a");
             const url = URL.createObjectURL(blob);
             link.setAttribute("href", url);
@@ -304,10 +306,15 @@ try {
         }
         </script>
 
-        <div class="print-only" style="margin-top: 50px; padding-top: 20px; border-top: 1px solid #ddd; display: flex; justify-content: space-between; font-size: 0.7rem; color: #666;">
-            <div>Manifest Generated: <?= date('Y-m-d H:i:s') ?></div>
-            <div>Approved By: __________________________</div>
-            <div>Page 1 of 1</div>
+        <!-- Final Manifest Approval (Print Exclusive) -->
+        <div class="manifest-print-footer print-only">
+            <div class="footer-row">
+                <span><strong>Manifest Generated:</strong> <?= date('Y-m-d H:i:s') ?></span>
+                <span style="flex: 1; text-align: center; border-bottom: 1px solid #000; margin: 0 40px; padding-bottom: 4px;">
+                    <strong>Approved By:</strong> <?= htmlspecialchars($_SESSION['display_name'] ?? $_SESSION['username'] ?? '________________________') ?>
+                </span>
+                <span><strong>Page 1 of 1</strong></span>
+            </div>
         </div>
     </div>
 

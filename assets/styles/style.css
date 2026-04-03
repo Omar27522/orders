@@ -485,6 +485,16 @@ tr:hover .btn-delete {
     color: var(--border-color);
 }
 
+.crumb.icon-only {
+    padding: 6px 10px;
+    font-size: 1.1rem;
+    line-height: 1;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    width: 40px;
+}
+
 @media (max-width: 850px) {
     .container {
         grid-template-columns: 1fr;
