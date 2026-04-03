@@ -109,7 +109,7 @@ try {
                             </div>
                         </div>
                         <div class='card-actions'>
-                            <button class='btn-view-cust' title='View Details'>👁</button>
+                            <a href='#customer-details' class='btn-view-cust' title='View Details' onclick='event.stopPropagation(); showDetails(this.closest(\".cust-card\"));'>👁</a>
                         </div>
                       </div>";
             }
@@ -121,7 +121,7 @@ try {
     </div>
 </div>
 
-<div class="summary-side">
+<div class="summary-side" id="customer-details">
     <section class="item-list">
         <h2>Customer Details</h2>
         <div id="side-details">
@@ -154,6 +154,7 @@ function renderDetailView(data) {
                 <div class="detail-item" style="margin:0;">
                     <div class="detail-label">Full Company Name</div>
                     <div class="detail-value text-main" style="font-size: 1.25rem;">${escapeHTML(data.company_name)}</div>
+                    <div style="margin-top: 6px; font-size: 0.7rem; font-family: monospace; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px; display: inline-block; font-weight: 700; letter-spacing: 0.05em;">${escapeHTML(data.customer_id)}</div>
                 </div>
                 <button onclick='renderEditView(${JSON.stringify(data).replace(/'/g, "&apos;")})' class="btn-view-cust" title="Edit Account">✎</button>
             </div>
