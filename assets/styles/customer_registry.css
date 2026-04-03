@@ -1,0 +1,119 @@
+/* Customer Registry and Account Overview Styles */
+.cust-card {
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 14px;
+    padding: 16px;
+    margin-bottom: 12px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    transition: all 0.2s ease;
+    cursor: pointer;
+}
+
+.cust-card:hover {
+    border-color: var(--accent-color);
+    box-shadow: var(--shadow-md);
+    transform: translateX(4px);
+}
+
+.cust-card.active {
+    background: #f0fdf4;
+    border-color: var(--accent-color);
+}
+
+.cust-main {
+    flex: 1;
+}
+
+.cust-name {
+    font-weight: 700;
+    color: var(--text-main);
+    font-size: 1rem;
+}
+
+.cust-id {
+    font-size: 0.8rem;
+    color: var(--text-secondary);
+    font-weight: 600;
+    margin-top: 2px;
+}
+
+.btn-view-cust {
+    background: #f1f5f9;
+    border: none;
+    width: 32px;
+    height: 32px;
+    border-radius: 8px;
+    cursor: pointer;
+    color: var(--text-secondary);
+    font-size: 0.9rem;
+    transition: background 0.2s;
+}
+
+.btn-view-cust:hover {
+    background: #e2e8f0;
+}
+
+/* Detail Box & Sidebar Navigation Elements */
+.detail-box {
+    animation: fadeInDown 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.detail-item {
+    margin-bottom: 16px;
+}
+
+.detail-label {
+    font-size: 0.75rem;
+    font-weight: 800;
+    color: var(--text-secondary);
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    margin-bottom: 4px;
+}
+
+.detail-value {
+    font-weight: 600;
+    color: var(--text-main);
+    font-size: 0.95rem;
+}
+
+.detail-notes {
+    background: #f8fafc;
+    padding: 12px;
+    border-radius: 10px;
+    font-size: 0.85rem;
+    color: var(--text-secondary);
+    border: 1px solid var(--border-color);
+}
+
+.order-row-link {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px;
+    background: white;
+    border: 1px solid var(--border-color);
+    border-radius: 10px;
+    text-decoration: none;
+    color: inherit;
+    transition: all 0.2s;
+}
+
+.order-row-link:hover {
+    border-color: var(--accent-color);
+    background: #f0fdf4;
+    transform: translateY(-1px);
+    box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+}
+
+.order-row-link.completed {
+    background: #f8fafc;
+    opacity: 0.8;
+}
+
+.order-row-link.completed:hover {
+    background: #f1f5f9;
+}

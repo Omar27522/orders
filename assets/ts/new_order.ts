@@ -44,11 +44,42 @@ const inventoryData = {
     }
 };
 
+// CPU Generations List
+const cpuGenerations: string[] = [
+    "i7-12th Gen",
+    "i7-11th Gen",
+    "i5-11th Gen",
+    "i7-10th Gen",
+    "i5-10th Gen",
+    "i7-9th Gen",
+    "i5-9th Gen",
+    "i7-8th Gen",
+    "i5-8th Gen",
+    "6th - 7th Gen",
+    "4th Gen & 5th",
+    "2nd & 3rd Gen",
+    "Ryzen 3",
+    "Ryzen 5",
+    "Ryzen 7",
+    "AMD",
+];
+
 const brandSelect = document.getElementById('brand') as HTMLSelectElement | null;
 const modelDatalist = document.getElementById('model-options');
 const seriesDatalist = document.getElementById('series-options');
+const cpuDatalist = document.getElementById('cpu-options');
 const modelInput = document.getElementById('models') as HTMLInputElement | null;
 const seriesInput = document.getElementById('series') as HTMLInputElement | null;
+
+// Initial Population for CPU Datalist
+if (cpuDatalist) {
+    cpuDatalist.innerHTML = '';
+    cpuGenerations.forEach(cpu => {
+        const option = document.createElement('option');
+        option.value = cpu;
+        cpuDatalist.appendChild(option);
+    });
+}
 
 if (brandSelect && modelDatalist && seriesDatalist) {
     brandSelect.addEventListener('change', (e: Event) => {
