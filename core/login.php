@@ -47,6 +47,7 @@ try {
             $_SESSION['authenticated'] = true;
             $_SESSION['username'] = $user['username'];
             $_SESSION['display_name'] = $user['display_name'] ?: $user['username'];
+            $_SESSION['role'] = $user['role'] ?? 'Operator';
             header("Location: ../index.php");
             exit();
         } else {

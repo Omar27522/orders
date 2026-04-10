@@ -82,6 +82,25 @@ try {
             }
         }
     }
+    // 3. Handle System Maintenance (Admin Only)
+    if ($_SESSION['username'] === 'admin' && isset($_POST['action']) && $_POST['action'] === 'cleanup_customers') {
+        $db_cust_file = realpath('assets/db/customers.db');
+        $db_orders_file = realpath('assets/db/orders.db');
+        try {
+            if (!$db_cust_file || !$db_orders_file) throw new Exception("Database files not found.");
+            
+            $conn_m = new PDO("sqlite:" . $db_cust_file);
+            $conn_m->exec("ATTACH DATABASE '" . $db_orders_file . "' AS db_o");
+            
+            // Delete customers with no orders
+            $sql_clean = "DELETE FROM customers WHERE customer_id NOT IN (SELECT DISTINCT customer_id FROM db_o.orders)";
+            $stmt_clean = $conn_m->prepare($sql_clean);
+            $stmt_clean->execute();
+            $removed = $stmt_clean->rowCount();
+            
+            $message = "Cleanup complete! Removed {$removed} customer(s) with 0 orders.";
+        } catch (Exception $e) { $error = "Cleanup failed: " . $e->getMessage(); }
+    }
 } catch (PDOException $e) { $error = "Database error: " . $e->getMessage(); }
 
 ?>
@@ -133,17 +152,17 @@ try {
         <form method="POST">
             <input type="hidden" name="action" value="change_password">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label>Current Password</label>
-                <input type="password" name="old_password" placeholder="••••••••" required>
+                <label for="old_password">Current Password</label>
+                <input type="password" id="old_password" name="old_password" placeholder="••••••••" required>
             </div>
             <div style="border-top: 1px dashed var(--border-color); padding-top: 20px; margin-top: 20px;">
                 <div class="form-group" style="margin-bottom: 20px;">
-                    <label>New Password</label>
-                    <input type="password" name="new_password" placeholder="Min 3 characters" required>
+                    <label for="new_password">New Password</label>
+                    <input type="password" id="new_password" name="new_password" placeholder="Min 3 characters" required>
                 </div>
                 <div class="form-group" style="margin-bottom: 30px;">
-                    <label>Confirm New Password</label>
-                    <input type="password" name="confirm_password" placeholder="Confirm new password" required>
+                    <label for="confirm_password">Confirm New Password</label>
+                    <input type="password" id="confirm_password" name="confirm_password" placeholder="Confirm new password" required>
                 </div>
             </div>
             <button type="submit" class="btn-main" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--text-main); color: white; border: none; font-weight: 800; cursor: pointer;">
@@ -172,8 +191,8 @@ try {
         <form method="POST">
             <input type="hidden" name="action" value="update_signature">
             <div class="form-group" style="margin-bottom: 20px;">
-                <label>Signature / Approved By Name</label>
-                <input type="text" name="display_name" value="<?= htmlspecialchars($current_sig) ?>" placeholder="e.g. John Smith — Operations Manager" required>
+                <label for="display_name">Signature / Approved By Name</label>
+                <input type="text" id="display_name" name="display_name" value="<?= htmlspecialchars($current_sig) ?>" placeholder="e.g. John Smith — Operations Manager" required>
             </div>
             <button type="submit" class="btn-main" style="width: 100%; padding: 16px; border-radius: 12px; background: var(--accent-color); color: white; border: none; font-weight: 800; cursor: pointer;">
                 ✍️ Save Signature
@@ -192,12 +211,12 @@ try {
         <form method="POST" style="background: #f8fafc; padding: 20px; border-radius: 16px; border: 1px solid #e2e8f0;">
             <input type="hidden" name="action" value="add_user">
             <div class="form-group" style="margin-bottom: 12px;">
-                <label>New Username</label>
-                <input type="text" name="new_username" placeholder="e.g. omar_sales" required>
+                <label for="new_username">New Username</label>
+                <input type="text" id="new_username" name="new_username" placeholder="e.g. omar_sales" required>
             </div>
             <div class="form-group" style="margin-bottom: 18px;">
-                <label>Assign Password</label>
-                <input type="password" name="new_password" placeholder="Min 3 characters" required>
+                <label for="staff_password">Assign Password</label>
+                <input type="password" id="staff_password" name="new_password" placeholder="Min 3 characters" required>
             </div>
             <button type="submit" class="btn-main" style="width: 100%; height: 44px; border-radius: 10px; background: var(--accent-color); color: white; border: none; font-weight: 800; cursor: pointer;">
                 ⊕ Add New Staff Member
@@ -223,6 +242,26 @@ try {
                 }
             ?>
         </ul>
+    </div>
+    <?php endif; ?>
+    <!-- 4. SYSTEM MAINTENANCE CARD (ADMIN ONLY) -->
+    <?php if ($_SESSION['username'] === 'admin'): ?>
+    <div class="settings-card" style="border-top: 4px solid #ef4444;">
+        <div class="settings-header">
+            <h1 style="color: #991b1b;">System Maintenance</h1>
+            <p class="subtitle">Perform administrative cleanup tasks to keep the database tidy.</p>
+        </div>
+
+        <form method="POST" onsubmit="return confirm('This will permanently delete all customers who have never placed an order. Are you sure?');">
+            <input type="hidden" name="action" value="cleanup_customers">
+            <div style="background: #fef2f2; border: 1px solid #fee2e2; padding: 20px; border-radius: 12px; margin-bottom: 24px;">
+                <h3 style="font-size: 0.9rem; color: #991b1b; margin-bottom: 8px;">Purge Inactive Customers</h3>
+                <p style="font-size: 0.8rem; color: #7f1d1d; line-height: 1.4;">Identify and remove customer profiles that haven't been assigned to any orders or batches yet.</p>
+            </div>
+            <button type="submit" class="btn-main" style="width: 100%; padding: 16px; border-radius: 12px; background: #ef4444; color: white; border: none; font-weight: 800; cursor: pointer;">
+                🗑️ Clean Up 0-Order Customers
+            </button>
+        </form>
     </div>
     <?php endif; ?>
 </div>

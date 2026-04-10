@@ -1,0 +1,10 @@
+[
+  {
+    "type": "sqlite",
+    "path": "c:\\Users\\Laptop\\Documents\\IQAMetal\\Orders\\orders\\assets\\db\\customers.db"
+  },
+  {
+    "type": "sqlite",
+    "path": "c:\\Users\\Laptop\\Documents\\IQAMetal\\Orders\\orders\\assets\\db\\users.db"
+  }
+]

@@ -28,6 +28,16 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // CRM Migration
+    $cols = $conn->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_ASSOC);
+    $has_cb = false; $has_msg = false;
+    foreach($cols as $c) {
+        if ($c['name'] === 'callback_date') $has_cb = true;
+        if ($c['name'] === 'message_date') $has_msg = true;
+    }
+    if (!$has_cb) $conn->exec("ALTER TABLE customers ADD COLUMN callback_date TEXT DEFAULT ''");
+    if (!$has_msg) $conn->exec("ALTER TABLE customers ADD COLUMN message_date TEXT DEFAULT ''");
+
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'register') {
         // Generate internal customer ID
         $internal_id = 'CUST-' . strtoupper(substr(bin2hex(random_bytes(4)), 0, 8));
@@ -41,11 +51,13 @@ try {
             ':email' => $_POST['email'] ?? '',
             ':phone' => $_POST['phone'] ?? '',
             ':ship' => $_POST['shipping_address'] ?? '',
-            ':notes' => $_POST['internal_notes'] ?? ''
+            ':notes' => $_POST['internal_notes'] ?? '',
+            ':cb_date' => $_POST['callback_date'] ?? '',
+            ':msg_date' => $_POST['message_date'] ?? ''
         ];
         
-        $sql = "INSERT INTO customers (customer_id, company_name, website, contact_person, address, email, phone, shipping_address, internal_notes) 
-                VALUES (:cid, :company, :web, :contact, :addr, :email, :phone, :ship, :notes)";
+        $sql = "INSERT INTO customers (customer_id, company_name, website, contact_person, address, email, phone, shipping_address, internal_notes, callback_date, message_date) 
+                VALUES (:cid, :company, :web, :contact, :addr, :email, :phone, :ship, :notes, :cb_date, :msg_date)";
         
         $stmt = $conn->prepare($sql);
         try {
@@ -103,6 +115,17 @@ unset($_SESSION['message']);
             <div class="form-group">
                 <label for="phone">Phone Number</label>
                 <input type="text" id="phone" name="phone" placeholder="+1 (555) 000-0000">
+            </div>
+        </div>
+
+        <div class="form-row">
+            <div class="form-group">
+                <label for="callback_date">Next Callback Date</label>
+                <input type="date" id="callback_date" name="callback_date">
+            </div>
+            <div class="form-group">
+                <label for="message_date">Last Message Date</label>
+                <input type="date" id="message_date" name="message_date">
             </div>
         </div>
 

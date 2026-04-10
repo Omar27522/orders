@@ -23,13 +23,28 @@ try {
     $conn_cust = new PDO("sqlite:" . $db_cust);
     $conn_items->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
 
-    // Handle Quantity, Price Updates & Finalization
+    // Handle Full Item Metadata & Finalization
     if ($_SERVER["REQUEST_METHOD"] == "POST") {
-        $prices = $_POST['unit_prices'] ?? [];
-        $qtys = $_POST['quantities'] ?? [];
         $order_id = $_GET['order_id'] ?? ($_POST['order_id'] ?? 'ORD-DEFAULT');
 
-        // 1. Update individual item values (always save changes)
+        // Check if it's a specific single item update (Modal Save) or bulk save
+        if (isset($_POST['action']) && $_POST['action'] === 'save_single_item') {
+            $stmt = $conn_items->prepare("UPDATE items SET 
+                brand = ?, model = ?, series = ?, cpu = ?, description = ?, 
+                quantity = ?, unit_price = ? 
+                WHERE id = ? AND customer_id = ?");
+            $stmt->execute([
+                $_POST['brand'], $_POST['model'], $_POST['series'], $_POST['cpu'], $_POST['description'],
+                (int)$_POST['quantity'], (float)$_POST['unit_price'], (int)$_POST['item_id'], $customer_id
+            ]);
+            echo json_encode(['status' => 'success']);
+            exit();
+        }
+
+        // Bulk Save (Original Table Form)
+        $prices = $_POST['unit_prices'] ?? [];
+        $qtys = $_POST['quantities'] ?? [];
+
         $stmt = $conn_items->prepare("UPDATE items SET unit_price = ?, quantity = ? WHERE id = ? AND customer_id = ?");
         foreach($prices as $id => $val) {
             $qty = (int)($qtys[$id] ?? 0);
@@ -109,6 +124,9 @@ try {
             <div class="icon-check">✓</div>
             <h1 style="font-size: 1.5rem; font-weight: 700; color: var(--text-main); margin-bottom: 8px;">Final Batch Verification</h1>
             <p class="subtitle">Review quantities and pricing for this manifest before final submission.</p>
+            <div style="margin-top: 20px; max-width: 500px; margin-left: auto; margin-right: auto;">
+                <input type="text" id="manifest-search" aria-label="Search manifest items" onkeyup="filterManifest()" placeholder="Search items by Brand, Model, Serial, etc..." style="width: 100%; height: 48px; border-radius: 12px; border: 1px solid var(--border-color); font-size: 16px; padding: 0 15px; box-shadow: 0 1px 3px rgba(0,0,0,0.05);">
+            </div>
         </div>
 
         <div style="border-bottom: 1px dashed var(--border-color); padding-bottom: 20px; margin-bottom: 20px; display: flex; justify-content: space-between;">
@@ -127,10 +145,10 @@ try {
             <table class="receipt-table">
                 <thead>
                     <tr>
-                        <th style="padding-left: 0;">Item Description</th>
-                        <th style="text-align: center; width: 70px;">Qty</th>
-                        <th style="text-align: right; width: 100px;">Price</th>
-                        <th style="text-align: right; width: 110px; padding-right: 0;">Subtotal</th>
+                        <th class="col-desc" style="padding-left: 0;">Item Description</th>
+                        <th class="col-qty" style="text-align: center;">Qty</th>
+                        <th class="col-price" style="text-align: right;">Price</th>
+                        <th class="col-total" style="text-align: right; padding-right: 0;">Subtotal</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -138,7 +156,7 @@ try {
                     $total_items = 0;
                     $grand_total = 0;
                     if (count($items) > 0):
-                        foreach($items as $item):
+                        foreach($items as $index => $item):
                             $qty = $item['quantity'];
                             $price = $item['unit_price'] ?? 0;
                             $subtotal = $qty * $price;
@@ -146,23 +164,30 @@ try {
                             $grand_total += $subtotal;
                     ?>
                     <tr class="item-row" data-id="<?= $item['id'] ?>">
-                        <td style="padding-left: 0;">
-                            <div style="font-weight: 700;"><?= htmlspecialchars($item['brand'] . " " . $item['model']) ?></div>
-                            <div style="font-size: 0.825rem; color: var(--text-secondary);"><?= htmlspecialchars($item['series']) ?> | <span style="color: var(--accent-color); font-weight:800;"><?= htmlspecialchars($item['cpu'] ?? '') ?></span> | <?= htmlspecialchars($item['description']) ?></div>
-                        </td>
-                        <td style="text-align: center;">
-                            <span class="print-only" style="font-weight: 700;"><?= (int)$qty ?></span>
-                            <input type="number" name="quantities[<?= $item['id'] ?>]" value="<?= (int)$qty ?>" min="1" class="qty-input no-print" style="width: 105px; text-align: center; height: 40px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 800; font-size: 1.1rem; background: #fff;" oninput="recalculateTotals()">
-                        </td>
-                        <td style="text-align: right;">
-                            <span class="print-only">$<?= number_format($price, 0) ?></span>
-                            <div class="no-print" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
-                                <span style="font-weight: 700;">$</span>
-                                <input type="number" name="unit_prices[<?= $item['id'] ?>]" value="<?= (int)$price ?>" step="1" min="0" class="price-input" style="width: 90px; text-align: right; height: 40px; padding: 0 10px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 800; font-size: 1.1rem; background: #fff;" oninput="recalculateTotals()">
+                        <td class="col-desc" style="padding-left: 0; cursor: pointer;" onclick="openEditModal(<?= $index ?>)" title="Click to edit full metadata (CPU, Series, etc.)">
+                            <div style="display: flex; justify-content: space-between; align-items: flex-start; gap: 8px;">
+                                <div class="copyable-text" style="flex: 1;">
+                                    <div class="item-brand-model" style="font-weight: 700;"><span class="item-brand"><?= htmlspecialchars($item['brand']) ?></span> <span class="item-model"><?= htmlspecialchars($item['model']) ?></span></div>
+                                    <div class="item-metadata" style="font-size: 0.825rem; color: var(--text-secondary);"><?= htmlspecialchars($item['series'] ?? '') ?> | <span style="color: var(--accent-color); font-weight:800;"><?= htmlspecialchars($item['cpu'] ?? '') ?></span> | <?= htmlspecialchars($item['description'] ?? '') ?></div>
+                                </div>
+                                <button type="button" class="btn-copy no-print" onclick="event.stopPropagation(); copyEntry(this)" title="Copy Description" style="background: none; border: none; cursor: pointer; padding: 4px; font-size: 0.9rem; opacity: 0.4; transition: opacity 0.2s; flex-shrink: 0;">
+                                    📋
+                                </button>
                             </div>
                         </td>
-                        <td style="text-align: right; font-weight: 700; color: var(--text-main); padding-right: 0;">
-                            $<span class="row-subtotal"><?= number_format($subtotal, 0) ?></span>
+                        <td class="col-qty" style="text-align: center;">
+                            <span class="print-only" style="font-weight: 700;"><?= (int)$qty ?></span>
+                            <input type="number" name="quantities[<?= $item['id'] ?>]" aria-label="Item Quantity" value="<?= (int)$qty ?>" min="1" class="qty-input no-print" oninput="recalculateTotals()" style="width: 70px; text-align: center; height: 38px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 700;">
+                        </td>
+                        <td class="col-price" style="text-align: right;">
+                            <span class="print-only">$<?= number_format($price, 2) ?></span>
+                            <div class="no-print price-input-wrapper" style="display: flex; align-items: center; justify-content: flex-end; gap: 4px;">
+                                <span style="font-weight: 700;">$</span>
+                                <input type="number" name="unit_prices[<?= $item['id'] ?>]" aria-label="Unit Price" value="<?= number_format($price, 2, '.', '') ?>" step="0.01" min="0" class="price-input" oninput="recalculateTotals()" style="width: 90px; text-align: right; height: 38px; padding: 0 10px; border: 1px solid var(--border-color); border-radius: 8px; font-weight: 700;">
+                            </div>
+                        </td>
+                        <td class="col-total" style="text-align: right; font-weight: 700; color: var(--text-main); padding-right: 0;">
+                            $<span class="row-subtotal"><?= number_format($subtotal, 2) ?></span>
                         </td>
                     </tr>
                     <?php endforeach; ?>
@@ -171,10 +196,10 @@ try {
                         <td colspan="4"><div class="empty-state">No items found.</div></td>
                     </tr>
                     <?php endif; ?>
-                    <tr>
-                        <td colspan="3" class="total-row" style="padding-left: 0;">Total Amount Due</td>
-                        <td class="total-row" style="text-align: right; color: var(--accent-color); padding-right: 0;">
-                            $<span id="grand-total-display"><?= number_format($grand_total, 0) ?></span>
+                    <tr class="row-total">
+                        <td colspan="3" class="total-label" style="padding-left: 0;">Total Amount Due</td>
+                        <td class="total-amount" style="text-align: right; color: var(--accent-color); padding-right: 0;">
+                            $<span id="grand-total-display"><?= number_format($grand_total, 2) ?></span>
                         </td>
                     </tr>
                 </tbody>
@@ -194,117 +219,25 @@ try {
                     </button>
                 </div>
                 
-                <button type="submit" name="finalize_order" value="true" class="btn-main" style="border: none; cursor: pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; background: var(--accent-color); color: white; border-radius: 12px; font-weight: 800; height: 54px; box-shadow: 0 4px 12px rgba(140, 198, 63, 0.2);">
+                <button type="submit" name="finalize_order" value="true" class="btn-main" style="border: none; cursor: pointer; text-decoration:none; display:flex; align-items:center; justify-content:center; background: var(--accent-color); color: white; border-radius: 14px; font-weight: 800; height: 54px; box-shadow: 0 4px 12px rgba(140, 198, 63, 0.2);">
                     ✅ Finalize & Finish Batch
                 </button>
             </div>
         </form>
 
         <script>
-        const rawItems = <?= json_encode($items) ?>;
-        const customerName = "<?= addslashes($customer['company_name'] ?? 'Account') ?>";
-        const orderID = "<?= addslashes($active_order_id) ?>";
-        const orderDate = "<?= date('M d, Y') ?>";
+        // PHP-injected data — must stay inline so checkout.js can reference them
+        var rawItems    = <?= json_encode($items, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        var customerName = <?= json_encode($customer['company_name'] ?? 'Account') ?>;
+        var orderID      = <?= json_encode($active_order_id) ?>;
+        var orderDate    = <?= json_encode(date('M d, Y')) ?>;
 
-        async function handlePrintManifest() {
-            const form = document.getElementById('checkout-form');
-            const formData = new FormData(form);
-            formData.set('action', 'update_items');
-            formData.set('finalize_status', 'true');
-
-            const printBtn = document.querySelector('.btn-print-action');
-            const originalText = printBtn.innerHTML;
-            
-            try {
-                printBtn.innerHTML = 'Saving...';
-                printBtn.disabled = true;
-
-                const response = await fetch(window.location.href, {
-                    method: 'POST',
-                    body: formData
-                });
-
-                if (response.ok) {
-                    printBtn.innerHTML = 'Preparing...';
-                    setTimeout(() => {
-                        window.print();
-                        printBtn.innerHTML = originalText;
-                        printBtn.disabled = false;
-                    }, 400);
-                } else { throw new Error(); }
-            } catch (err) {
-                alert('Save failed. Try manually saving first.');
-                printBtn.innerHTML = originalText;
-                printBtn.disabled = false;
-            }
-        }
-
-        function downloadCSV() {
-            // Header Template (Quoted to prevent splitting on spaces)
-            let csv = "\"IQA Metal B2B Purchase Form\",,,,,,,,\n\n";
-            csv += `\"Name\",\"${customerName}\",,,,,,,\n`;
-            csv += `\"Date\",\"${orderDate}\",,,,,,,\n`;
-            csv += `\"Order #\",\"${orderID}\",,,,,,,\n\n`;
-            
-            // Column Headers
-            csv += "\"Type\",\"Brand\",\"Model\",\"Series\",\"CPU / Gen\",\"Description\",\"Price\",\"QTY\",\"Total\"\n";
-            
-            let totalQty = 0;
-            let grandTotal = 0;
-
-            rawItems.forEach(item => {
-                const row = document.querySelector(`input[name="quantities[${item.id}]"]`).closest('tr');
-                const liveQty = parseInt(row.querySelector('.qty-input').value) || 0;
-                const livePrice = parseFloat(row.querySelector('.price-input').value) || 0;
-                const rowTotal = liveQty * livePrice;
-
-                // Mandatory Quoting for all text fields
-                const type = `"${(item.type || '').replace(/"/g, '""')}"`;
-                const brand = `"${(item.brand || '').replace(/"/g, '""')}"`;
-                const model = `"${(item.model || '').replace(/"/g, '""')}"`;
-                const series = `"${(item.series || '').replace(/"/g, '""')}"`;
-                const cpu = `"${(item.cpu || '').replace(/"/g, '""')}"`;
-                const desc = `"${(item.description || '').replace(/"/g, '""')}"`;
-
-                csv += `${type},${brand},${model},${series},${cpu},${desc},${livePrice},${liveQty},${rowTotal.toFixed(2)}\n`;
-                totalQty += liveQty;
-                grandTotal += rowTotal;
-            });
-
-            // Footer (Aligned to QTY and Total columns)
-            csv += `\n,,,,,,,,\"Total QTY\",\"${totalQty}\"\n`;
-            csv += `,,,,,,,,\"Total Amount\",\"$${grandTotal.toFixed(2)}\"\n`;
-
-            const blob = new Blob(["\uFEFF" + csv], { type: 'text/csv;charset=utf-8;' });
-            const link = document.createElement("a");
-            const url = URL.createObjectURL(blob);
-            link.setAttribute("href", url);
-            link.setAttribute("download", `IQA_B2B_Form_${orderID}.csv`);
-            document.body.appendChild(link);
-            link.click();
-            document.body.removeChild(link);
-        }
-
-        function recalculateTotals() {
-            let grandTotal = 0;
-            document.querySelectorAll('.item-row').forEach(row => {
-                const qtyInput = row.querySelector('.qty-input');
-                const qty = parseFloat(qtyInput.value) || 0;
-                const priceInput = row.querySelector('.price-input');
-                const price = parseFloat(priceInput.value) || 0;
-                const subtotal = Math.round(qty * price);
-                row.querySelector('.row-subtotal').innerText = subtotal.toLocaleString();
-                
-                const spans = row.querySelectorAll('.print-only');
-                if (spans.length >= 2) {
-                    spans[0].innerText = qty;
-                    spans[1].innerText = '$' + price.toLocaleString();
-                }
-                grandTotal += subtotal;
-            });
-            document.getElementById('grand-total-display').innerText = grandTotal.toLocaleString();
-        }
+        console.log("Manifest Sync Initiated.");
+        console.log("Items Count:", rawItems.length);
+        console.log("Customer:", customerName);
+        console.log("Order ID:", orderID);
         </script>
+        <script src="assets/js/checkout.js"></script>
 
         <!-- Final Manifest Approval (Print Exclusive) -->
         <div class="manifest-print-footer print-only">
@@ -314,6 +247,59 @@ try {
                     <strong>Approved By:</strong> <?= htmlspecialchars($_SESSION['display_name'] ?? $_SESSION['username'] ?? '________________________') ?>
                 </span>
                 <span><strong>Page 1 of 1</strong></span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Edit Modal Structure -->
+    <div id="editModal" class="modal-overlay no-print" onclick="if(event.target === this) closeEditModal()">
+        <div class="modal-box">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 25px;">
+                <h3 style="font-weight: 800; font-size: 1.25rem;">📝 Edit Item</h3>
+                <button type="button" onclick="closeEditModal()" style="background:none; border:none; cursor:pointer; font-size:1.5rem; opacity:0.5;">&times;</button>
+            </div>
+            
+            <input type="hidden" id="modal-item-id">
+            <input type="hidden" id="modal-item-index">
+            
+            <div class="modal-grid">
+                <div class="form-group">
+                    <label for="modal-brand">Brand</label>
+                    <input type="text" id="modal-brand">
+                </div>
+                <div class="form-group">
+                    <label for="modal-model">Model</label>
+                    <input type="text" id="modal-model">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="modal-series">Series / Project ID</label>
+                    <input type="text" id="modal-series">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="modal-cpu">CPU / Gen</label>
+                    <input type="text" id="modal-cpu">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                    <label for="modal-desc">Condition / Comments</label>
+                    <textarea id="modal-desc" style="width:100%; min-height:80px; border-radius:10px; border:1px solid #ddd; padding:10px;"></textarea>
+                </div>
+                <div class="form-group">
+                    <label for="modal-qty">Quantity</label>
+                    <input type="number" id="modal-qty">
+                </div>
+                <div class="form-group">
+                    <label for="modal-price">Unit Price ($)</label>
+                    <input type="number" id="modal-price">
+                </div>
+            </div>
+
+            <div style="margin-top: 30px; display: flex; gap: 15px;">
+                <button type="button" onclick="printLabel()" id="btn-modal-print" class="btn-main" title="Generate 2x1 Thermal Label" style="flex: 1; border: 2px solid var(--border-color); cursor:pointer; height: 54px; background: transparent; color: var(--text-main); border-radius: 14px; font-weight: 800;">
+                    🖨️ Print Label
+                </button>
+                <button type="button" onclick="saveItemChanges()" id="btn-modal-save" class="btn-main" style="flex: 1; border:none; cursor:pointer; height: 54px; background: var(--text-main); color: white; border-radius: 14px; font-weight: 800;">
+                    Update
+                </button>
             </div>
         </div>
     </div>

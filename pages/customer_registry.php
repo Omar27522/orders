@@ -40,14 +40,26 @@ try {
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
     )");
 
+    // CRM Migration
+    $cols = $conn->query("PRAGMA table_info(customers)")->fetchAll(PDO::FETCH_ASSOC);
+    $has_cb = false; $has_msg = false;
+    foreach($cols as $c) {
+        if ($c['name'] === 'callback_date') $has_cb = true;
+        if ($c['name'] === 'message_date') $has_msg = true;
+    }
+    if (!$has_cb) $conn->exec("ALTER TABLE customers ADD COLUMN callback_date TEXT DEFAULT ''");
+    if (!$has_msg) $conn->exec("ALTER TABLE customers ADD COLUMN message_date TEXT DEFAULT ''");
+
     if ($_SERVER["REQUEST_METHOD"] == "POST" && isset($_POST['action']) && $_POST['action'] === 'edit_customer') {
         $stmt = $conn->prepare("UPDATE customers SET
             company_name = ?, website = ?, contact_person = ?, address = ?,
-            email = ?, phone = ?, shipping_address = ?, internal_notes = ?
+            email = ?, phone = ?, shipping_address = ?, internal_notes = ?,
+            callback_date = ?, message_date = ?
             WHERE customer_id = ?");
         $stmt->execute([
             $_POST['company_name'], $_POST['website'], $_POST['contact_person'], $_POST['address'],
             $_POST['email'], $_POST['phone'], $_POST['shipping_address'], $_POST['internal_notes'],
+            $_POST['callback_date'] ?? '', $_POST['message_date'] ?? '',
             $_POST['customer_id']
         ]);
         header("Location: index.php");
@@ -60,7 +72,7 @@ try {
 ?>
 
 <!-- Load dedicated registry styles -->
-<link rel="stylesheet" href="assets/styles/customer_registry.css">
+
 
 <div class="form-side">
     <header>
@@ -73,7 +85,7 @@ try {
     </div>
 
     <div class="search-box" style="margin-bottom: 20px;">
-        <input type="text" id="cust-search" placeholder="Search by name or ID..." style="height: 40px; font-size: 0.9rem;" onkeyup="filterCustomers()">
+        <input type="text" id="cust-search" placeholder="Search by name or ID..." style="font-size: 0.9rem;" onkeyup="filterCustomers()">
     </div>
 
     <div class="registry-list" id="customer-list">
@@ -96,20 +108,22 @@ try {
             $c['completed_count'] = $completed_count;
             $c['active_count'] = $active_count;
         }
+        unset($c);
 
         if (count($customers) > 0) {
-            foreach($customers as $c) {
+                foreach($customers as $c) {
                 $json_data = htmlspecialchars(json_encode($c), ENT_QUOTES, 'UTF-8');
-                echo "<div class='cust-card' onclick='showDetails(this)' data-customer='{$json_data}' data-search='" . htmlspecialchars($c['company_name'] . " " . $c['customer_id']) . "' style='margin-bottom:0;'>
+                echo "<div class='cust-card' onclick='showDetails(this)' data-customer='{$json_data}' data-search='" . htmlspecialchars($c['company_name'] . " " . $c['customer_id']) . "'>
                         <div class='cust-main'>
                             <div class='cust-name'>" . htmlspecialchars($c['company_name']) . "</div>
-                            <div style='display:flex; align-items:center; gap: 8px;'>
-                                <div style='font-size: 0.7rem; background: #f0fdf4; color:#166534; padding:2px 6px; border-radius:10px; font-weight:700;'>{$c['completed_count']} Completed Orders</div>
-                                " . ($c['active_count'] > 0 ? "<div style='font-size: 0.7rem; background: #fffbeb; color:#92400e; padding:2px 6px; border-radius:10px; font-weight:700;'>{$c['active_count']} Drafts</div>" : "") . "
+                            <div style='font-size: 0.75rem; font-family: monospace; color: var(--text-secondary); margin-bottom: 8px;'>" . htmlspecialchars($c['customer_id']) . "</div>
+                            <div style='display:flex; align-items:center; flex-wrap: wrap; gap: 8px;'>
+                                <div style='font-size: 0.7rem; background: #f0fdf4; color:#166534; padding:3px 8px; border-radius:10px; font-weight:700; white-space: nowrap;'>{$c['completed_count']} Completed</div>
+                                " . ($c['active_count'] > 0 ? "<div style='font-size: 0.7rem; background: #fffbeb; color:#92400e; padding:3px 8px; border-radius:10px; font-weight:700; white-space: nowrap;'>{$c['active_count']} Drafts</div>" : "") . "
                             </div>
                         </div>
                         <div class='card-actions'>
-                            <a href='#customer-details' class='btn-view-cust' title='View Details' onclick='event.stopPropagation(); showDetails(this.closest(\".cust-card\"));'>👁</a>
+                            <a href=\"#customer-details\"><div class='btn-view-cust' title='View Details'>👁</div></a>
                         </div>
                       </div>";
             }
@@ -132,156 +146,4 @@ try {
     </section>
 </div>
 
-<script>
-function showDetails(el) {
-    const cards = document.getElementsByClassName('cust-card');
-    for(let c of cards) c.classList.remove('active');
-    el.classList.add('active');
-    const data = JSON.parse(el.getAttribute('data-customer'));
-    renderDetailView(data);
-}
 
-const escapeHTML = (str) => {
-    if (!str) return '—';
-    return str.toString().replace(/[&<>"']/g, m => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[m]));
-};
-
-function renderDetailView(data) {
-    const side = document.getElementById('side-details');
-    side.innerHTML = `
-        <div class="detail-box">
-            <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom: 20px;">
-                <div class="detail-item" style="margin:0;">
-                    <div class="detail-label">Full Company Name</div>
-                    <div class="detail-value text-main" style="font-size: 1.25rem;">${escapeHTML(data.company_name)}</div>
-                    <div style="margin-top: 6px; font-size: 0.7rem; font-family: monospace; background: #f1f5f9; color: #475569; padding: 3px 8px; border-radius: 6px; display: inline-block; font-weight: 700; letter-spacing: 0.05em;">${escapeHTML(data.customer_id)}</div>
-                </div>
-                <button onclick='renderEditView(${JSON.stringify(data).replace(/'/g, "&apos;")})' class="btn-view-cust" title="Edit Account">✎</button>
-            </div>
-
-            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px;">
-                <div class="detail-item">
-                    <div class="detail-label">Contact Person</div>
-                    <div class="detail-value">${escapeHTML(data.contact_person)}</div>
-                </div>
-                <div class="detail-item">
-                    <div class="detail-label">Website</div>
-                    <div class="detail-value">${data.website ? `<a href="${escapeHTML(data.website)}" target="_blank" style="color: var(--accent-color); text-decoration:none;">Visit</a>` : '—'}</div>
-                </div>
-            </div>
-
-            <div class="detail-item">
-                <div class="detail-label">Draft / Open Batches</div>
-                <div id="side-drafts" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
-                    ${data.orders_list && data.orders_list.filter(o => !['finalized','paid','dispatched'].includes(o.status.toLowerCase())).length > 0 ?
-                        data.orders_list.filter(o => !['finalized','paid','dispatched'].includes(o.status.toLowerCase())).map(o => `
-                            <a href="index.php?customer_id=${encodeURIComponent(data.customer_id)}&order_id=${encodeURIComponent(o.order_id)}"
-                               class="order-row-link">
-                                <div>
-                                    <div style="font-weight: 700; font-size: 0.9rem;">Batch: ${o.created_at}</div>
-                                </div>
-                                <span class="qty-chip" style="font-size: 0.7rem; background: #fffbeb; color: #92400e; box-shadow: none;">Resume →</span>
-                            </a>
-                        `).join('') :
-                        '<div class="empty-state" style="padding: 10px; font-size: 0.75rem; color: #94a3b8;">No draft orders.</div>'
-                    }
-                </div>
-            </div>
-
-            <div class="detail-item">
-                <div class="detail-label">Completed / History</div>
-                <div id="side-completed" style="display: flex; flex-direction: column; gap: 8px; margin-bottom: 20px;">
-                    ${data.orders_list && data.orders_list.filter(o => ['finalized','paid','dispatched'].includes(o.status.toLowerCase())).length > 0 ?
-                        data.orders_list.filter(o => ['finalized','paid','dispatched'].includes(o.status.toLowerCase())).map(o => `
-                            <a href="checkout.php?customer_id=${encodeURIComponent(data.customer_id)}&order_id=${encodeURIComponent(o.order_id)}"
-                               class="order-row-link completed">
-                                <div>
-                                    <div style="font-weight: 600; font-size: 0.85rem; color: #64748b;">Batch: ${o.created_at}</div>
-                                </div>
-                                <span class="qty-chip" style="font-size: 0.7rem; background: #f1f5f9; color: #475569; box-shadow: none;">Modify</span>
-                            </a>
-                        `).join('') :
-                        '<div class="empty-state" style="padding: 10px; font-size: 0.75rem; color: #94a3b8;">No completion history.</div>'
-                    }
-                </div>
-            </div>
-
-            <div style="padding-top: 10px; border-top: 1px dashed var(--border-color); margin-top: 20px;">
-                <a href="index.php?customer_id=${encodeURIComponent(data.customer_id)}&action=create_new_order" class="btn-main" style="text-decoration:none; display:flex; align-items:center; justify-content:center; padding: 16px; border-radius: 12px; background: var(--accent-color); color: white; font-weight: 800; text-align: center; gap: 8px; box-shadow: 0 10px 15px -3px rgba(140, 198, 63, 0.3);">
-                    <span>+</span> Start New Fresh Order
-                </a>
-            </div>
-        </div>
-    `;
-}
-
-function renderEditView(data) {
-    const side = document.getElementById('side-details');
-    side.innerHTML = `
-        <form method="POST" class="detail-box">
-            <input type="hidden" name="action" value="edit_customer">
-            <input type="hidden" name="customer_id" value="${data.customer_id}">
-
-            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom: 20px;">
-                <h3 style="font-size:0.8rem; text-transform:uppercase; color:var(--text-secondary); letter-spacing:0.1em; font-weight:800;">Edit Account Details</h3>
-                <button type="button" onclick='renderDetailView(${JSON.stringify(data).replace(/'/g, "&apos;")})' class="btn-view-cust">✖</button>
-            </div>
-
-            <div class="form-group" style="margin-bottom:12px;">
-                <label>Company Name</label>
-                <input type="text" name="company_name" value="${escapeHTML(data.company_name)}" style="height:38px; font-size:0.85rem;" required>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom:12px;">
-                <div class="form-group">
-                    <label>Contact Person</label>
-                    <input type="text" name="contact_person" value="${escapeHTML(data.contact_person)}" style="height:38px; font-size:0.85rem;">
-                </div>
-                <div class="form-group">
-                    <label>Website</label>
-                    <input type="text" name="website" value="${escapeHTML(data.website)}" style="height:38px; font-size:0.85rem;">
-                </div>
-            </div>
-
-            <div style="display:grid; grid-template-columns: 1fr 1fr; gap: 12px; margin-bottom:12px;">
-                <div class="form-group">
-                    <label>Email</label>
-                    <input type="email" name="email" value="${escapeHTML(data.email)}" style="height:38px; font-size:0.85rem;">
-                </div>
-                <div class="form-group">
-                    <label>Phone</label>
-                    <input type="text" name="phone" value="${escapeHTML(data.phone)}" style="height:38px; font-size:0.85rem;">
-                </div>
-            </div>
-
-            <div class="form-group" style="margin-bottom:12px;">
-                <label>Business Address</label>
-                <input type="text" name="address" value="${escapeHTML(data.address)}" style="height:38px; font-size:0.85rem;">
-            </div>
-
-            <div class="form-group" style="margin-bottom:12px;">
-                <label>Shipping Address</label>
-                <input type="text" name="shipping_address" value="${escapeHTML(data.shipping_address)}" style="height:38px; font-size:0.85rem;">
-            </div>
-
-            <div class="form-group" style="margin-bottom:20px;">
-                <label>Internal Notes</label>
-                <textarea name="internal_notes" class="detail-notes" style="width:100%; min-height:80px;">${escapeHTML(data.internal_notes)}</textarea>
-            </div>
-
-            <button type="submit" class="btn-main" style="width:100%; padding:14px; border-radius:12px; background:var(--text-main); color:white; font-weight:800; border:none; cursor:pointer;">💾 Save Account Changes</button>
-        </form>
-    `;
-}
-
-function filterCustomers() {
-    let input = document.getElementById('cust-search');
-    let filter = input.value.toLowerCase();
-    let cards = document.getElementsByClassName('cust-card');
-
-    for (let i = 0; i < cards.length; i++) {
-        let search = cards[i].getAttribute('data-search').toLowerCase();
-        cards[i].style.display = search.includes(filter) ? "" : "none";
-    }
-}
-</script>
